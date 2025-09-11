@@ -47,7 +47,7 @@ async function loadHero(){
 // ---------------- Photos (renamed)
 async function loadPhotos(){
   await loadOneGallery('images/Most_Beautiful_Girl_In_The_World/manifest.json', '#galleryHer', 'images/Most_Beautiful_Girl_In_The_World/');
-  await loadOneGallery('images/The_Beauti\'ful_Hey/manifest.json', '#galleryUs', 'images/The_Beauti\'ful_Hey/');
+  await loadOneGallery("images/The_Beauti'ful_Hey/manifest.json", '#galleryUs', "images/The_Beauti'ful_Hey/");
 }
 
 async function loadOneGallery(manifestPath, containerSel, baseUrl){
@@ -134,7 +134,7 @@ function closeReader(){
 
 // Helpers
 function escapeHTML(str){
-  return (str||'').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
+  return (str||'').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[s]));
 }
 
 // Minimal MD renderer
