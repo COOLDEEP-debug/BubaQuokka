@@ -19,18 +19,10 @@
 <main>
   <section id="photos" class="section active" aria-labelledby="photos-tab">
     <div class="toolbar">
-      <label class="btn">
-        <input id="photoInput" type="file" accept="image/*" multiple hidden>
-        ➕ Add Photos
-      </label>
-      <button id="exportBtn" class="btn">⬇️ Export Backup</button>
-      <label class="btn">
-        <input id="importInput" type="file" accept="application/json" hidden>
-        ⬆️ Import Backup
-      </label>
-      <button id="clearPhotosBtn" class="btn danger">🗑️ Clear Photos</button>
+      <button id="refreshBtn" class="btn">🔄 Refresh</button>
+      <a class="btn" href="https://github.com" target="_blank" rel="noopener">⬆️ Open GitHub</a>
     </div>
-    <p class="hint">Photos are saved in your browser on this device. Use Export/Import to move them to another device.</p>
+    <p class="hint">Add images by committing <code>.jpg/.jpeg/.png/.webp</code> files to the <code>images/</code> folder in this repo. The site will auto‑update the gallery using <code>images/manifest.json</code>.</p>
     <div id="gallery" class="gallery" aria-live="polite"></div>
   </section>
 
@@ -45,8 +37,14 @@
     </form>
     <ul id="messages" class="messages" aria-live="polite"></ul>
     <div class="chat-actions">
+      <button id="exportChatBtn" class="btn">⬇️ Export Conversation</button>
+      <label class="btn">
+        <input id="importChatInput" type="file" accept="application/json" hidden>
+        ⬆️ Import Conversation
+      </label>
       <button id="clearChatBtn" class="btn danger">🗑️ Clear Conversation</button>
     </div>
+    <p class="hint">Conversation is saved in your browser. Use Export/Import to store it in the repo at <code>data/conversation.json</code> (manually upload in GitHub).</p>
   </section>
 </main>
 
@@ -61,7 +59,7 @@
     </label>
     <label class="switch">
       <input id="themeToggle" type="checkbox">
-      <span>Dark theme</span>
+      <span>Light theme</span>
     </label>
     <div class="modal-actions">
       <button id="saveSettings" class="btn primary">Save</button>
@@ -71,7 +69,7 @@
 </div>
 
 <footer>
-  <small>Private by design: data lives on your device unless you export it.</small>
+  <small>Images are served from <code>/images</code> in the repo. Messages are local unless you export them to JSON and commit to <code>/data</code>.</small>
 </footer>
 
 <script src="app.js"></script>

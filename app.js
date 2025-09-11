@@ -1,94 +1,16 @@
-// Us — Photos & Conversation
-// Static site that stores data locally via IndexedDB. Export/Import enables moving data across devices.
-
-const DB_NAME = 'usApp';
-const DB_VERSION = 1;
-let db;
+// Static site that reads photos from /images/manifest.json (built by GitHub Actions)
+// Conversation is stored locally; you can export/import JSON to keep in /data.
 
 const $ = sel => document.querySelector(sel);
 const $$ = sel => Array.from(document.querySelectorAll(sel));
 
 document.addEventListener('DOMContentLoaded', async () => {
-  await openDB();
-  await ensureStores();
   bindUI();
   await loadSettings();
-  await renderAll();
+  await loadManifestAndRender();
+  await loadConversation();
 });
 
-function openDB(){
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onerror = () => reject(req.error);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if(!db.objectStoreNames.contains('photos')){
-        const store = db.createObjectStore('photos', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('by_date','addedAt');
-      }
-      if(!db.objectStoreNames.contains('messages')){
-        const store = db.createObjectStore('messages', { keyPath: 'id', autoIncrement: true });
-        store.createIndex('by_date','ts');
-      }
-      if(!db.objectStoreNames.contains('settings')){
-        db.createObjectStore('settings', { keyPath: 'key' });
-      }
-    };
-    req.onsuccess = () => { db = req.result; resolve(); };
-  });
-}
-
-function ensureStores(){ return Promise.resolve(); }
-
-// ---------- IndexedDB helpers
-function tx(store, mode='readonly'){
-  const t = db.transaction(store, mode);
-  return { t, s: t.objectStore(store) };
-}
-
-function add(store, value){
-  return new Promise((resolve, reject) => {
-    const {s} = tx(store, 'readwrite');
-    const req = s.add(value);
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
-}
-function put(store, value){
-  return new Promise((resolve, reject) => {
-    const {s} = tx(store, 'readwrite');
-    const req = s.put(value);
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
-}
-function del(store, key){
-  return new Promise((resolve, reject) => {
-    const {s} = tx(store, 'readwrite');
-    const req = s.delete(key);
-    req.onsuccess = ()=> resolve();
-    req.onerror = ()=> reject(req.error);
-  });
-}
-function getAll(store, index=null){
-  return new Promise((resolve, reject) => {
-    const {s} = tx(store);
-    const src = index ? s.index(index) : s;
-    const req = src.getAll();
-    req.onsuccess = ()=> resolve(req.result);
-    req.onerror = ()=> reject(req.error);
-  });
-}
-function clearStore(store){
-  return new Promise((resolve, reject) => {
-    const {s} = tx(store, 'readwrite');
-    const req = s.clear();
-    req.onsuccess = ()=> resolve();
-    req.onerror = ()=> reject(req.error);
-  });
-}
-
-// ---------- UI bindings
 function bindUI(){
   // Tabs
   $$('.tab').forEach(btn => btn.addEventListener('click', () => {
@@ -100,26 +22,18 @@ function bindUI(){
   }));
 
   // Photos
-  $('#photoInput').addEventListener('change', onAddPhotos);
-  $('#clearPhotosBtn').addEventListener('click', async () => {
-    if(confirm('Clear ALL photos? This cannot be undone.')){
-      await clearStore('photos');
-      await renderGallery();
-    }
-  });
-
-  // Export/Import
-  $('#exportBtn').addEventListener('click', exportBackup);
-  $('#importInput').addEventListener('change', importBackup);
+  $('#refreshBtn').addEventListener('click', loadManifestAndRender);
 
   // Chat
   $('#chatForm').addEventListener('submit', onAddMessage);
-  $('#clearChatBtn').addEventListener('click', async () => {
+  $('#clearChatBtn').addEventListener('click', () => {
     if(confirm('Clear the entire conversation?')){
-      await clearStore('messages');
-      await renderMessages();
+      saveConversation([]);
+      renderMessages([]);
     }
   });
+  $('#exportChatBtn').addEventListener('click', exportConversation);
+  $('#importChatInput').addEventListener('change', importConversation);
 
   // Settings
   $('#settingsBtn').addEventListener('click', () => $('#settingsModal').classList.remove('hidden'));
@@ -127,135 +41,102 @@ function bindUI(){
   $('#saveSettings').addEventListener('click', saveSettings);
 }
 
-async function renderAll(){
-  await renderGallery();
-  await renderMessages();
-}
-
-// ---------- Settings & Theme
-async function loadSettings(){
-  const list = await getAll('settings');
-  const s = Object.fromEntries(list.map(i => [i.key, i.value]));
+// ---------------- Settings
+function loadSettings(){
+  const s = JSON.parse(localStorage.getItem('us_settings') || '{}');
   const nameA = s.nameA || 'Me';
   const nameB = s.nameB || 'Partner';
   $('#nameA').value = nameA;
   $('#nameB').value = nameB;
   $('#nameALabel').textContent = nameA;
   $('#nameBLabel').textContent = nameB;
-
   const theme = s.theme || 'dark';
   document.documentElement.classList.toggle('light', theme === 'light');
   $('#themeToggle').checked = theme === 'light';
 }
 
-async function saveSettings(){
-  const nameA = $('#nameA').value.trim() || 'Me';
-  const nameB = $('#nameB').value.trim() || 'Partner';
-  await put('settings', {key:'nameA', value:nameA});
-  await put('settings', {key:'nameB', value:nameB});
-  const theme = $('#themeToggle').checked ? 'light' : 'dark';
-  await put('settings', {key:'theme', value:theme});
-
-  $('#nameALabel').textContent = nameA;
-  $('#nameBLabel').textContent = nameB;
-  document.documentElement.classList.toggle('light', theme === 'light');
+function saveSettings(){
+  const s = {
+    nameA: $('#nameA').value.trim() || 'Me',
+    nameB: $('#nameB').value.trim() || 'Partner',
+    theme: $('#themeToggle').checked ? 'light' : 'dark'
+  };
+  localStorage.setItem('us_settings', JSON.stringify(s));
+  $('#nameALabel').textContent = s.nameA;
+  $('#nameBLabel').textContent = s.nameB;
+  document.documentElement.classList.toggle('light', s.theme === 'light');
   $('#settingsModal').classList.add('hidden');
 }
 
-// ---------- Photos
-async function onAddPhotos(e){
-  const files = Array.from(e.target.files || []);
-  if(!files.length) return;
-  for(const file of files){
-    try{
-      const blob = await maybeResize(file, 1920);
-      await add('photos', { blob, addedAt: Date.now(), name: file.name });
-    }catch(err){ console.error(err); }
+// ---------------- Photos — manifest
+async function loadManifestAndRender(){
+  const gallery = $('#gallery');
+  gallery.innerHTML = '<div class="hint">Loading images…</div>';
+  try{
+    const res = await fetch('images/manifest.json', {cache:'no-store'});
+    if(!res.ok) throw new Error('manifest not found');
+    const manifest = await res.json();
+    const files = (manifest.files || []).filter(f => /\.(jpe?g|png|webp|gif)$/i.test(f));
+    renderGallery(files);
+  }catch(e){
+    gallery.innerHTML = '<div class="hint">No manifest yet. Add images in <code>images/</code> and wait for GitHub Actions to generate <code>manifest.json</code>.</div>';
   }
-  e.target.value = '';
-  await renderGallery();
 }
 
-async function renderGallery(){
-  const photos = await getAll('photos','by_date');
+function renderGallery(files){
   const g = $('#gallery');
   g.innerHTML = '';
-  for(const p of photos.sort((a,b)=>b.addedAt-a.addedAt)){
-    const url = URL.createObjectURL(p.blob);
+  if(!files.length){
+    g.innerHTML = '<div class="hint">No photos yet. Commit images to <code>images/</code>.</div>';
+    return;
+  }
+  for(const fn of files){
+    const url = 'images/' + encodeURIComponent(fn);
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
-      <img src="${url}" alt="Photo">
-      <div class="actions">
-        <button class="link" title="Download">⬇️</button>
-        <button class="link" title="Delete">🗑️</button>
-      </div>
-      <div class="small">${escapeHTML(p.name || 'photo')}</div>
+      <img src="${url}" alt="Photo ${fn}">
+      <div class="small">${escapeHTML(fn)}</div>
     `;
-    const [btnDownload, btnDelete] = card.querySelectorAll('.actions .link');
-    btnDownload.addEventListener('click', () => downloadBlob(p.blob, p.name || 'photo.jpg'));
-    btnDelete.addEventListener('click', async () => {
-      if(confirm('Delete this photo?')){
-        await del('photos', p.id);
-        await renderGallery();
-      }
-    });
     g.appendChild(card);
   }
 }
 
-// Resize large images to save space (keeps EXIF orientation via canvas draw)
-function maybeResize(file, maxDim=1920){
-  return new Promise((resolve) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-    img.onload = ()=>{
-      let {width:w, height:h} = img;
-      if(Math.max(w,h) <= maxDim){
-        URL.revokeObjectURL(url);
-        resolve(file);
-        return;
-      }
-      const scale = maxDim / Math.max(w,h);
-      const nw = Math.round(w*scale);
-      const nh = Math.round(h*scale);
-      const canvas = document.createElement('canvas');
-      canvas.width = nw; canvas.height = nh;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, nw, nh);
-      canvas.toBlob(b => {
-        URL.revokeObjectURL(url);
-        resolve(b);
-      }, 'image/jpeg', 0.9);
-    };
-    img.onerror = ()=>{ URL.revokeObjectURL(url); resolve(file); };
-    img.src = url;
-  });
+// ---------------- Conversation (local)
+function loadConversation(){
+  const raw = localStorage.getItem('us_conversation');
+  let msgs = [];
+  if(raw){
+    try{ msgs = JSON.parse(raw) || []; } catch{ msgs = []; }
+  }
+  renderMessages(msgs);
 }
-
-// ---------- Chat
-async function onAddMessage(e){
+function saveConversation(msgs){
+  localStorage.setItem('us_conversation', JSON.stringify(msgs));
+}
+function onAddMessage(e){
   e.preventDefault();
   const from = (new FormData(e.target)).get('from') || 'A';
   const text = $('#messageInput').value.trim();
   if(!text) return;
-  await add('messages', { from, text, ts: Date.now() });
+  const raw = localStorage.getItem('us_conversation');
+  const msgs = raw ? (JSON.parse(raw)||[]) : [];
+  msgs.push({ id: Date.now(), from, text, ts: Date.now() });
+  saveConversation(msgs);
   $('#messageInput').value='';
-  await renderMessages();
+  renderMessages(msgs);
 }
-
-async function renderMessages(){
-  const msgs = (await getAll('messages','by_date')).sort((a,b)=>a.ts-b.ts);
-  const names = await getNames();
+function renderMessages(msgs){
+  const names = getNames();
   const ul = $('#messages'); ul.innerHTML = '';
-  for(const m of msgs){
+  for(const m of msgs.sort((a,b)=>a.ts-b.ts)){
     const li = document.createElement('li');
     li.className = 'msg';
     const who = m.from === 'A' ? names.A : names.B;
     li.innerHTML = `
       <div class="avatar">${initials(who)}</div>
       <div>
-        <div class="meta">${escapeHTML(who)} <span class="time">· ${fmtTime(m.ts)}</span></div>
+        <div class="meta">${escapeHTML(who)} <span class="time">· ${new Date(m.ts).toLocaleString()}</span></div>
         <div class="text">${escapeHTML(m.text)}</div>
       </div>
       <div class="row">
@@ -264,122 +145,73 @@ async function renderMessages(){
       </div>
     `;
     const [btnEdit, btnDelete] = li.querySelectorAll('.row .link');
-    btnDelete.addEventListener('click', async ()=>{
+    btnDelete.addEventListener('click', () => {
       if(confirm('Delete this message?')){
-        await del('messages', m.id);
-        await renderMessages();
+        const next = msgs.filter(x => x.id !== m.id);
+        saveConversation(next); renderMessages(next);
       }
     });
-    btnEdit.addEventListener('click', ()=> editMessage(li, m));
+    btnEdit.addEventListener('click', () => {
+      const textDiv = li.querySelector('.text');
+      const textarea = document.createElement('textarea');
+      textarea.value = m.text;
+      textarea.style.minHeight = '80px';
+      textDiv.replaceWith(textarea);
+      const row = li.querySelector('.row');
+      row.innerHTML = '';
+      const saveBtn = document.createElement('button'); saveBtn.className='link'; saveBtn.textContent='💾 Save';
+      const cancelBtn = document.createElement('button'); cancelBtn.className='link'; cancelBtn.textContent='✖️ Cancel';
+      row.append(saveBtn, cancelBtn);
+      saveBtn.addEventListener('click', ()=>{
+        const val = textarea.value.trim();
+        if(!val){ alert('Message cannot be empty.'); return; }
+        m.text = val;
+        const next = msgs.map(x => x.id===m.id ? m : x);
+        saveConversation(next); renderMessages(next);
+      });
+      cancelBtn.addEventListener('click', ()=> renderMessages(msgs));
+    });
     ul.appendChild(li);
   }
 }
-
-function editMessage(li, m){
-  const textDiv = li.querySelector('.text');
-  const original = m.text;
-  const textarea = document.createElement('textarea');
-  textarea.value = original;
-  textarea.style.minHeight = '80px';
-  textDiv.replaceWith(textarea);
-  const row = li.querySelector('.row');
-  row.innerHTML = '';
-  const saveBtn = document.createElement('button'); saveBtn.className='link'; saveBtn.textContent='💾 Save';
-  const cancelBtn = document.createElement('button'); cancelBtn.className='link'; cancelBtn.textContent='✖️ Cancel';
-  row.append(saveBtn, cancelBtn);
-  saveBtn.addEventListener('click', async ()=>{
-    const val = textarea.value.trim();
-    if(!val){ alert('Message cannot be empty.'); return; }
-    m.text = val;
-    await put('messages', m);
-    await renderMessages();
-  });
-  cancelBtn.addEventListener('click', async ()=>{
-    await renderMessages();
-  });
-}
-
-// ---------- Export / Import
-async function exportBackup(){
-  const [photos, messages, settingsArr] = await Promise.all([
-    getAll('photos'), getAll('messages'), getAll('settings')
-  ]);
-  const settings = Object.fromEntries(settingsArr.map(i=>[i.key, i.value]));
-  // Convert photo blobs to data URLs
-  const photosSerialized = await Promise.all(photos.map(async p => ({
-    id: p.id, name: p.name, addedAt: p.addedAt,
-    dataURL: await blobToDataURL(p.blob)
-  })));
-  const payload = { v:1, exportedAt: Date.now(), photos: photosSerialized, messages, settings };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
-  const stamp = new Date().toISOString().slice(0,10);
-  downloadBlob(blob, `us-backup-${stamp}.json`);
-}
-
-async function importBackup(e){
-  const file = e.target.files?.[0];
-  e.target.value = '';
-  if(!file) return;
-  try{
-    const text = await file.text();
-    const data = JSON.parse(text);
-    if(!data || data.v !== 1) throw new Error('Unsupported backup format');
-    if(!confirm('Import will MERGE with existing data. Continue?')) return;
-    // Photos
-    for(const p of data.photos || []){
-      const blob = await dataURLToBlob(p.dataURL);
-      await add('photos', { blob, addedAt: p.addedAt || Date.now(), name: p.name || 'photo' });
-    }
-    // Messages
-    for(const m of data.messages || []){
-      await add('messages', { from: m.from || 'A', text: m.text || '', ts: m.ts || Date.now() });
-    }
-    // Settings
-    const s = data.settings || {};
-    if(s.nameA) await put('settings', {key:'nameA', value:s.nameA});
-    if(s.nameB) await put('settings', {key:'nameB', value:s.nameB});
-    if(s.theme) await put('settings', {key:'theme', value:s.theme});
-    await loadSettings();
-    await renderAll();
-    alert('Import complete.');
-  }catch(err){
-    console.error(err);
-    alert('Import failed: ' + err.message);
-  }
-}
-
-// ---------- Utils
-async function getNames(){
-  const list = await getAll('settings');
-  const s = Object.fromEntries(list.map(i => [i.key, i.value]));
+function getNames(){
+  const s = JSON.parse(localStorage.getItem('us_settings') || '{}');
   return { A: s.nameA || 'Me', B: s.nameB || 'Partner' };
 }
 
+// Export / Import JSON for conversation
+function exportConversation(){
+  const data = {
+    v: 1,
+    exportedAt: Date.now(),
+    messages: JSON.parse(localStorage.getItem('us_conversation')||'[]'),
+    settings: JSON.parse(localStorage.getItem('us_settings')||'{}')
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'conversation.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importConversation(e){
+  const f = e.target.files?.[0]; e.target.value='';
+  if(!f) return;
+  f.text().then(txt => {
+    const data = JSON.parse(txt);
+    const msgs = data.messages || [];
+    saveConversation(msgs);
+    renderMessages(msgs);
+    alert('Conversation imported.');
+  }).catch(err => alert('Import failed: ' + err.message));
+}
+
+// Utils
 function initials(name){
   const parts = (name||'').split(/\s+/).filter(Boolean);
   const i = parts.slice(0,2).map(p=>p[0].toUpperCase()).join('');
   return i || 'U';
 }
-function fmtTime(ts){
-  const d = new Date(ts);
-  return d.toLocaleString();
-}
 function escapeHTML(str){
   return (str || '').replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[s]));
-}
-function downloadBlob(blob, filename){
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
-function blobToDataURL(blob){
-  return new Promise((resolve) => {
-    const r = new FileReader();
-    r.onload = ()=> resolve(r.result);
-    r.readAsDataURL(blob);
-  });
-}
-function dataURLToBlob(dataURL){
-  return fetch(dataURL).then(r => r.blob());
 }
