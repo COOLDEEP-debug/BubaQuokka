@@ -3,73 +3,75 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Us — Photos & Conversation</title>
+  <title>Buba ❤ Quokka</title>
   <link rel="stylesheet" href="styles.css">
+  <meta name="color-scheme" content="light only">
 </head>
 <body>
-<header>
-  <h1 id="siteTitle">Us ❤️</h1>
-  <nav>
-    <button class="tab active" data-tab="photos" aria-controls="photos" aria-selected="true">Photos</button>
-    <button class="tab" data-tab="chat" aria-controls="chat" aria-selected="false">Conversation</button>
-    <button id="settingsBtn" class="icon-btn" title="Settings" aria-haspopup="dialog" aria-controls="settingsModal">⚙️</button>
-  </nav>
+<header class="site-header">
+  <div class="wrap">
+    <div class="lockup">
+      <div class="heart">❤</div>
+      <div>
+        <h1 class="title">Buba & Quokka</h1>
+        <p class="subtitle">We first met on <strong>12 March 2025</strong> through Instagram.</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Sections">
+      <button class="tab active" data-tab="photos" aria-selected="true" role="tab">Photos</button>
+      <button class="tab" data-tab="letters" aria-selected="false" role="tab">Letters</button>
+      <a class="pill" href="https://github.com" target="_blank" rel="noopener">Open GitHub</a>
+    </nav>
+  </div>
 </header>
 
-<main>
-  <section id="photos" class="section active" aria-labelledby="photos-tab">
-    <div class="toolbar">
-      <button id="refreshBtn" class="btn">🔄 Refresh</button>
-      <a class="btn" href="https://github.com" target="_blank" rel="noopener">⬆️ Open GitHub</a>
+<main class="wrap">
+  <section id="photos" class="section active" role="tabpanel" aria-labelledby="photos-tab">
+    <div class="card toolbar">
+      <div class="toolbar-row">
+        <div>
+          <span class="pill soft">Put images in <code>images/</code></span>
+          <span class="pill soft">Types: jpg, jpeg, png, webp, gif</span>
+        </div>
+        <div class="right">
+          <button id="refreshPhotos" class="btn">Refresh</button>
+        </div>
+      </div>
+      <p class="hint">Every time you add/remove images in <code>images/</code>, GitHub Actions updates <code>images/manifest.json</code>. This page reads that file.</p>
     </div>
-    <p class="hint">Add images by committing <code>.jpg/.jpeg/.png/.webp</code> files to the <code>images/</code> folder in this repo. The site will auto‑update the gallery using <code>images/manifest.json</code>.</p>
-    <div id="gallery" class="gallery" aria-live="polite"></div>
+
+    <div id="gallery" class="masonry" aria-live="polite"></div>
   </section>
 
-  <section id="chat" class="section" aria-labelledby="chat-tab">
-    <form id="chatForm" class="chat-form">
-      <div class="from">
-        <label><input type="radio" name="from" value="A" checked> <span id="nameALabel">Me</span></label>
-        <label><input type="radio" name="from" value="B"> <span id="nameBLabel">Partner</span></label>
+  <section id="letters" class="section" role="tabpanel" aria-labelledby="letters-tab">
+    <div class="card toolbar">
+      <div class="toolbar-row">
+        <div>
+          <span class="pill soft">Store text in <code>texts/</code></span>
+          <span class="pill soft">Types: .txt, .md</span>
+        </div>
+        <div class="right">
+          <button id="refreshLetters" class="btn">Refresh</button>
+        </div>
       </div>
-      <textarea id="messageInput" placeholder="Write a message..." required></textarea>
-      <button class="btn primary" type="submit">Add Message</button>
-    </form>
-    <ul id="messages" class="messages" aria-live="polite"></ul>
-    <div class="chat-actions">
-      <button id="exportChatBtn" class="btn">⬇️ Export Conversation</button>
-      <label class="btn">
-        <input id="importChatInput" type="file" accept="application/json" hidden>
-        ⬆️ Import Conversation
-      </label>
-      <button id="clearChatBtn" class="btn danger">🗑️ Clear Conversation</button>
+      <p class="hint">Add love notes as separate files (e.g., <code>2025-03-12-first-message.md</code>). The site lists them via <code>texts/manifest.json</code>.</p>
     </div>
-    <p class="hint">Conversation is saved in your browser. Use Export/Import to store it in the repo at <code>data/conversation.json</code> (manually upload in GitHub).</p>
+
+    <div id="lettersList" class="letters-list" aria-live="polite"></div>
+    <article id="reader" class="card reader hidden" aria-live="polite">
+      <header class="reader-head">
+        <h2 id="readerTitle" class="reader-title">Letter</h2>
+        <button id="closeReader" class="btn ghost">Close</button>
+      </header>
+      <div id="readerBody" class="prose"></div>
+    </article>
   </section>
 </main>
 
-<div id="settingsModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-  <div class="modal-content">
-    <h2 id="settingsTitle">Settings</h2>
-    <label> Your name
-      <input id="nameA" type="text" placeholder="Your name">
-    </label>
-    <label> Partner's name
-      <input id="nameB" type="text" placeholder="Partner's name">
-    </label>
-    <label class="switch">
-      <input id="themeToggle" type="checkbox">
-      <span>Light theme</span>
-    </label>
-    <div class="modal-actions">
-      <button id="saveSettings" class="btn primary">Save</button>
-      <button id="closeSettings" class="btn">Close</button>
-    </div>
+<footer class="site-footer">
+  <div class="wrap">
+    <small>Made with ❤ by Buba for Quokka. Images and letters are loaded from this repository.</small>
   </div>
-</div>
-
-<footer>
-  <small>Images are served from <code>/images</code> in the repo. Messages are local unless you export them to JSON and commit to <code>/data</code>.</small>
 </footer>
 
 <script src="app.js"></script>
