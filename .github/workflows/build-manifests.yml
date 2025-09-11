@@ -1,0 +1,49 @@
+name: Build manifests
+
+on:
+  push:
+    paths:
+      - 'images/**'
+      - 'texts/**'
+      - '.github/workflows/build-manifests.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate manifests with Python
+        run: |
+          python3 - << 'PY'
+          import os, json, sys
+          def write_manifest(folder, exts):
+            os.makedirs(folder, exist_ok=True)
+            files = []
+            for name in sorted(os.listdir(folder)):
+              p = os.path.join(folder, name)
+              if os.path.isfile(p) and any(name.lower().endswith(e) for e in exts):
+                files.append(name)
+            with open(os.path.join(folder, 'manifest.json'), 'w', encoding='utf-8') as f:
+              json.dump({'files': files}, f, indent=2)
+          write_manifest('images/hero', ['.jpg','.jpeg','.png','.webp','.gif'])
+          write_manifest("images/Most_Beautiful_Girl_In_The_World", ['.jpg','.jpeg','.png','.webp','.gif'])
+          write_manifest("images/The_Beauti'ful_Hey", ['.jpg','.jpeg','.png','.webp','.gif'])
+          write_manifest('texts', ['.txt','.md'])
+          PY
+
+      - name: Commit manifests
+        run: |
+          if git status --porcelain | grep -q 'manifest.json'; then
+            git config user.name "github-actions"
+            git config user.email "actions@users.noreply.github.com"
+            git add images/hero/manifest.json images/Most_Beautiful_Girl_In_The_World/manifest.json images/The_Beauti'ful_Hey/manifest.json texts/manifest.json
+            git commit -m "chore: update manifests"
+            git push
+          else
+            echo "No changes to commit."
+          fi
