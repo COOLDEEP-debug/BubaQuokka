@@ -1,25 +1,36 @@
 /* Romantic beige theme — soft colors, gentle shadows, elegant typography */
 :root{
-  --bg: #f7f1e8;         /* warm beige */
-  --paper: #fffaf3;      /* lighter beige paper */
-  --ink: #433a2c;        /* deep cocoa */
-  --muted: #7a6d59;      /* soft brown */
-  --accent: #e6b7b7;     /* blush rose */
-  --rose: #d37a7a;       /* deeper rose */
-  --mint: #cfe6d6;       /* mint accent */
-  --line: rgba(67,58,44,0.12);
-  --shadow: 0 10px 30px rgba(67,58,44,0.08);
+  --bg: #f6efe5;
+  --paper: #fffaf3;
+  --ink: #3e3223;
+  --muted: #7a6d59;
+  --accent: #e7c7c7;
+  --rose: #d37a7a;
+  --mint: #cfe6d6;
+  --line: rgba(62,50,35,0.12);
+  --shadow: 0 10px 30px rgba(62,50,35,0.10);
 }
 
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
-  margin:0; color:var(--ink); background:
-    radial-gradient(1000px 600px at -10% -20%, rgba(211,122,122,0.08), transparent 50%),
-    radial-gradient(900px 600px at 110% -10%, rgba(207,230,214,0.12), transparent 50%),
-    var(--bg);
-  font: 17px/1.55 ui-serif, Georgia, 'Times New Roman', Times, serif;
+  margin:0; color:var(--ink); background: var(--bg);
+  font: 17px/1.6 "Crimson Pro", ui-serif, Georgia, serif;
 }
+
+.script{ font-family: "Great Vibes", cursive; font-size: 1.2em; }
+
+/* floating hearts backdrop */
+.bg-hearts{
+  position: fixed; inset: 0; pointer-events:none; z-index:-1;
+  background:
+    radial-gradient(10px 10px at 10% 20%, rgba(211,122,122,.10), transparent 50%),
+    radial-gradient(12px 12px at 80% 15%, rgba(207,230,214,.10), transparent 50%),
+    radial-gradient(10px 10px at 30% 70%, rgba(231,199,199,.10), transparent 50%);
+  animation: float 16s linear infinite;
+  opacity: .8;
+}
+@keyframes float{ 0%{transform:translateY(0)} 50%{transform:translateY(-10px)} 100%{transform:translateY(0)} }
 
 /* Layout */
 .wrap{max-width: 1000px; margin: 0 auto; padding: 0 16px}
@@ -33,15 +44,33 @@ body{
   width:44px; height:44px; border-radius:50%;
   background: radial-gradient(circle at 30% 30%, var(--rose), var(--accent));
   display:grid; place-items:center; color:white; font-size:20px; box-shadow: var(--shadow);
+  animation: pulse 2.8s ease-in-out infinite;
 }
-.title{margin:0; font-size: clamp(26px, 3.4vw, 36px); letter-spacing: .5px}
+@keyframes pulse{ 0%,100%{transform:scale(1)} 50%{transform:scale(1.06)} }
+.title{margin:0; font-size: clamp(28px, 3.6vw, 42px); letter-spacing: .5px}
 .subtitle{margin: 4px 0 0; color: var(--muted)}
 
+/* HERO */
+.hero{ border-radius: 0; margin: 0 0 10px; padding: 0; box-shadow: none; background: transparent; border: none;}
+.hero-inner{ position: relative; max-width: 1200px; margin: 8px auto 0; }
+#heroImg{
+  width: 100%; height: clamp(220px, 36vw, 440px); object-fit: cover; display:block;
+  border-radius: 24px; box-shadow: var(--shadow); border: 1px solid var(--line);
+  opacity: 0; transform: translateY(8px); transition: opacity .6s ease, transform .6s ease;
+}
+#heroImg[src]{ opacity:1; transform:none; }
+.hero-overlay{ position:absolute; inset: 0; display:grid; align-items:end; justify-items:start; border-radius:24px;
+  background: linear-gradient(to top, rgba(62,50,35,.22), transparent 60%); pointer-events:none; }
+.hero-caption{ color:#fff; text-shadow:0 2px 10px rgba(0,0,0,.35); font-weight:700; letter-spacing:.4px; font-size:clamp(18px, 2.2vw, 26px); padding: 14px 18px; font-family:"Crimson Pro", serif; }
+
+/* Tabs & controls */
 .tabs{display:flex; gap:8px; align-items:center; padding: 10px 0 14px}
 .tab, .pill, .btn{
   border:1px solid var(--line); background: var(--paper); color: var(--ink);
-  padding:10px 14px; border-radius: 999px; cursor:pointer; box-shadow: var(--shadow)
+  padding:10px 14px; border-radius: 999px; cursor:pointer; box-shadow: var(--shadow);
+  transition: transform .15s ease, box-shadow .2s ease;
 }
+.tab:hover,.pill:hover,.btn:hover{ transform: translateY(-1px); box-shadow: 0 14px 34px rgba(62,50,35,0.12); }
 .tab.active{outline:2px solid var(--accent)}
 .pill{ text-decoration:none }
 .pill.soft{ background: #fffdf8 }
@@ -56,7 +85,7 @@ main{ padding: 18px 0 40px }
 .card{
   background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 22px;
   padding: 14px;
   box-shadow: var(--shadow);
   margin: 10px 0 14px;
@@ -65,14 +94,24 @@ main{ padding: 18px 0 40px }
 /* Toolbar */
 .toolbar .toolbar-row{ display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap}
 .hint{ color: var(--muted); margin: 6px 2px 10px }
+.pillrow{ display:flex; flex-wrap:wrap; gap:8px }
+
+/* Divider */
+.divider{ display:grid; place-items:center; margin: 10px 0 6px }
+.divider:before{ content:""; display:block; width:100%; height:1px; background: linear-gradient(90deg, transparent, var(--line), transparent) }
+.divider span{ position:relative; top:-12px; background: var(--bg); padding: 0 10px; border-radius: 999px; }
+
+/* Section titles */
+.sect-title{ margin: 12px 0 10px; letter-spacing: .3px; font-weight:700 }
 
 /* Masonry gallery */
 .masonry{ columns: 260px; column-gap: 12px }
 .masonry .ph{
   display:block; width:100%; margin:0 0 12px; break-inside: avoid;
-  border-radius: 16px; border: 1px solid var(--line); box-shadow: var(--shadow); overflow:hidden;
-  background: #fff; position: relative;
+  border-radius: 18px; border: 1px solid var(--line); box-shadow: var(--shadow); overflow:hidden;
+  background: #fff; position: relative; transition: transform .15s ease, box-shadow .2s ease;
 }
+.masonry .ph:hover{ transform: translateY(-2px); box-shadow: 0 16px 36px rgba(62,50,35,.14); }
 .masonry .ph img{ width:100%; height:auto; display:block }
 .masonry .ph .cap{ padding: 8px 10px; font-size: 14px; color: var(--muted); border-top:1px dashed var(--line); background: #fffcf6 }
 
@@ -80,8 +119,10 @@ main{ padding: 18px 0 40px }
 .letters-list{ display:grid; gap:10px }
 .letter{
   display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px dashed var(--line);
-  border-radius: 16px; background: var(--paper); box-shadow: var(--shadow)
+  border-radius: 18px; background: var(--paper); box-shadow: var(--shadow);
+  transition: transform .15s ease, box-shadow .2s ease;
 }
+.letter:hover{ transform: translateY(-1px); box-shadow: 0 14px 34px rgba(62,50,35,.12); }
 .letter .dot{
   width:12px; height:12px; border-radius:50%; background: radial-gradient(circle at 35% 35%, var(--rose), var(--accent))
 }
