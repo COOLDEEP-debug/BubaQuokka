@@ -1,10 +1,11 @@
-name: Build image manifest
+name: Build manifests
 
 on:
   push:
     paths:
       - 'images/**'
-      - '.github/workflows/build-manifest.yml'
+      - 'texts/**'
+      - '.github/workflows/build-manifests.yml'
   workflow_dispatch:
 
 jobs:
@@ -15,31 +16,41 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # allow pushing back
 
-      - name: Generate manifest
+      - name: Generate manifests with Python
         run: |
-          mkdir -p images
-          echo '{ "files": [' > images/manifest.json
-          first=1
-          # list image files (case-insensitive): jpg, jpeg, png, webp, gif
-          shopt -s nocaseglob nullglob
-          files=(images/*.{jpg,jpeg,png,webp,gif})
-          for f in "${files[@]}"; do
-            bn="$(basename "$f")"
-            if [ $first -eq 0 ]; then echo ',' >> images/manifest.json; fi
-            printf '  "%s"' "$bn" >> images/manifest.json
-            first=0
-          done
-          echo ' ] }' >> images/manifest.json
+          python3 - << 'PY'
+          import os, json
+          def write_manifest(folder, exts):
+            os.makedirs(folder, exist_ok=True)
+            files = []
+            for name in sorted(os.listdir(folder)):
+              p = os.path.join(folder, name)
+              if os.path.isfile(p) and any(name.lower().endswith(e) for e in exts):
+                files.append(name)
+            with open(os.path.join(folder, 'manifest.json'), 'w', encoding='utf-8') as f:
+              json.dump({'files': files}, f, indent=2)
 
-      - name: Commit manifest
+          IMG = ['.jpg','.jpeg','.png','.webp','.gif']
+          TXT = ['.txt','.md']
+          write_manifest('images/hero', IMG)
+          write_manifest('images/Most_Beautiful_Girl_In_The_World', IMG)
+          write_manifest("images/The_Beauti'ful_Hey", IMG)   # apostrophe OK
+          write_manifest('texts', TXT)
+          PY
+
+      - name: Commit manifests
+        shell: bash
         run: |
-          if git status --porcelain | grep -q 'images/manifest.json'; then
-            git config user.name "github-actions"
-            git config user.email "actions@users.noreply.github.com"
-            git add images/manifest.json
-            git commit -m "chore: update images manifest"
-            git push
-          else
+          set -e
+          git config user.name "github-actions"
+          git config user.email "actions@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
             echo "No changes to commit."
+          else
+            git commit -m "chore: update manifests"
+            git push
           fi
