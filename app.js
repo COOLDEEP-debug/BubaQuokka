@@ -46,8 +46,8 @@ async function loadHero(){
 
 // ---------------- Photos (renamed)
 async function loadPhotos(){
-  await loadOneGallery('images/Most_Beautiful_Girl_In_The_World/manifest.json', '#galleryHer', 'images/Most_Beautiful_Girl_In_The_World/');
   await loadOneGallery("images/The_Beauti'ful_Hey/manifest.json", '#galleryUs', "images/The_Beauti'ful_Hey/");
+  await loadOneGallery('images/Most_Beautiful_Girl_In_The_World/manifest.json', '#galleryHer', 'images/Most_Beautiful_Girl_In_The_World/');
 }
 
 async function loadOneGallery(manifestPath, containerSel, baseUrl){
